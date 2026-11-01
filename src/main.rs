@@ -42,6 +42,10 @@ struct Args {
     /// Code players must enter to join (the join QR code includes it)
     #[arg(long, env = "WEBPAD_JOIN_CODE", hide_env_values = true)]
     join_code: Option<String>,
+    /// Address phones use to reach this server, for the QR code and links, e.g. when the
+    /// server sits behind an SSH tunnel [default: http://<LAN IP>:<port>]
+    #[arg(long, value_name = "URL")]
+    public_url: Option<String>,
 }
 
 #[tokio::main]
@@ -75,7 +79,10 @@ async fn main() -> anyhow::Result<()> {
             // Input frames are tiny; don't let Nagle batch them.
             let _ = tcp.set_nodelay(true);
         });
-    let base = format!("http://{}:{}", local_ip_address::local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)), args.port);
+    let base = match args.public_url {
+        Some(url) => url.trim_end_matches('/').to_owned(),
+        None => format!("http://{}:{}", local_ip_address::local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)), args.port),
+    };
     let join_code = args.join_code.filter(|c| !c.is_empty());
     let join_url = match &join_code {
         Some(code) => format!("{base}/pad?code={}", percent_encode(code)),

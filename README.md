@@ -43,6 +43,7 @@ iPhone browsers can't make a web page fullscreen. For a fullscreen controller, o
 | `--grace` | 30 | Seconds a disconnected phone keeps its slot |
 | `--join-code` | none | Code players need to join (env `WEBPAD_JOIN_CODE`). The QR code includes it |
 | `--admin-password` | none | Password for Manage (env `WEBPAD_ADMIN_PASSWORD`). **Without it, anyone on the network can manage players** |
+| `--public-url` | `http://<LAN IP>:<port>` | Address phones use to reach the server, used in the QR code and links. Set it when the server is behind a tunnel |
 
 Both secrets travel over plain HTTP on your network. They keep casual guests out, but they aren't strong security ([details](docs/decisions/0004-auth-model.md)).
 

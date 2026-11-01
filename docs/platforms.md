@@ -10,6 +10,10 @@
 - `--backend auto` uses ViGEm when the driver is reachable. Otherwise it warns and falls back to `log`.
 - Windows Firewall blocks the port until you allow it (admin): `netsh advfirewall firewall add rule name="webpad" dir=in action=allow protocol=TCP localport=8080 profile=private`.
 - **Steam Link:** run webpad on the PC that runs the game, not on the Steam Link client. The client only forwards controllers its own OS sees, and macOS can't create virtual gamepads.
+  - If the phones aren't on the PC's network (for example Steam Link over the internet), run webpad on the PC and tunnel it to a machine on the phones' network:
+    - On the Mac: `ssh -N -g -L 8080:localhost:8080 kolpa2`, where `-g` lets phones on the Mac's Wi-Fi connect.
+    - On the PC: `webpad --public-url http://<mac-lan-ip>:8080`, so the QR code points at the Mac.
+    - Input then follows the same path Steam Link's own controller forwarding would (about 30–35 ms one way, from Mac to kolpa2, measured 2026-11-01).
 - Test host: `ssh kolpa2`. As of 2026-11-01 it had no Rust toolchain and no ViGEmBus installed.
 
 ### Linux: `uinput` (planned, milestone 2)
