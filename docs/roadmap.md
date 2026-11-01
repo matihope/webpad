@@ -25,7 +25,8 @@ Update the checkboxes as work lands and record details in the [dev log](log/).
 - [ ] try on real phones: reorder, identify, kick *(needs a human)*
 
 ## Milestone 2: OS gamepad backends
-- [ ] `uinput` backend on Linux. Test on `ssh kolpa` with `evtest`. Needs uinput permissions; see platforms.md.
+- [x] `uinput` backend on Linux (verified on kolpa with tools/drive-pad.mjs + tools/read-pad.py, 2026-11-01)
+- [ ] try `uinput` with a real game or Steam on a Linux desktop *(needs a human)*
 - [x] `vigem` backend on Windows (code; type-checks from macOS via `--target x86_64-pc-windows-gnu`)
 - [x] verify `vigem` on kolpa2 over Steam Link (2026-11-01, user-confirmed; Xbox 360 controller #1 plugged in from an SSH session)
 - [x] `--backend auto` picks the OS backend, falling back to `log`, and says why

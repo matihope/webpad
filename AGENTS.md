@@ -3,7 +3,7 @@
 Instructions for coding agents working in this repo. The user-facing overview is in [README.md](README.md).
 
 ## What this is
-webpad is a Rust server that serves a phone controller web page and turns each connected phone into a virtual gamepad on the host. It uses ViGEm on Windows and uinput on Linux (planned). macOS can't create virtual gamepads ([ADR 0003](docs/decisions/0003-macos-keyboard-fallback.md)). Read [docs/architecture.md](docs/architecture.md) first.
+webpad is a Rust server that serves a phone controller web page and turns each connected phone into a virtual gamepad on the host. It uses ViGEm on Windows and uinput on Linux. macOS can't create virtual gamepads ([ADR 0003](docs/decisions/0003-macos-keyboard-fallback.md)). Read [docs/architecture.md](docs/architecture.md) first.
 
 ## Start-of-session checklist
 1. Read the **latest entry in `docs/log/`** and [docs/roadmap.md](docs/roadmap.md) to see where things stand.
@@ -39,12 +39,15 @@ node tools/fake-phones.mjs                   # protocol smoke test (server: --ma
 node tools/admin-smoke.mjs                   # login + every admin action (server: --max-players 3 --admin-password test --join-code 1234)
 node tools/ui-smoke.mjs <outdir>             # controller touch test via headless Chrome (see file header)
 node tools/pages-smoke.mjs <outdir>          # screenshots of landing + admin pages (see file header)
+node tools/drive-pad.mjs & python3 -u tools/read-pad.py   # Linux: scripted input → decoded evdev events of the virtual pad
 ```
 In debug builds `rust-embed` serves `web/` from disk, so a browser reload picks up UI changes without rebuilding.
 
 ## Test machines
 - **This machine:** macOS. Use it for development and the `log` backend.
-- **`ssh kolpa`:** headless Arch Linux with cargo. Use it for the uinput backend and check with `evtest`. `/dev/uinput` is root-only there, so ask the user before changing udev rules or groups.
+- **`ssh kolpa`:** headless Arch Linux with cargo and node. Use it for the uinput backend. No sudo without a password: ask the user before changing udev rules or groups, then open a Terminal `.command` on the Mac that runs `ssh -t kolpa sudo …` so they can type it.
+  - Sync the working tree with `rsync -az --exclude target --exclude .git ./ kolpa:code/webpad/` (that clone isn't a git checkout).
+  - Check a pad with `tools/drive-pad.mjs` plus `python3 -u tools/read-pad.py` (evtest isn't installed).
 - **`ssh kolpa2`:** Windows (cmd shell; dual-boot, so it may answer from Linux instead). Use it for the ViGEm backend. ViGEmBus is installed. The SSH session isn't elevated, so admin installs go through a script the user double-clicks (see `tools/windows-setup.bat`).
 
 The repo is on GitHub (`origin` = https://github.com/matihope/webpad). Test machines build from a clone: push first, then `git pull` there.
@@ -64,6 +67,7 @@ The repo is on GitHub (`origin` = https://github.com/matihope/webpad). Test mach
   - Put OS-only code behind `#[cfg(target_os = "…")]` on both the module and its `BackendKind` variant.
 - **Stuck inputs:** every disconnect path must release inputs. `Sessions::leave` does this, so don't bypass it.
 - **Pads never move between slots.** Games see controllers in plug-in order, so admin reordering moves owners, not pads (see `docs/architecture.md`).
+- **Host changes:** never make permanent system changes automatically (ADR 0005). Prefer fixes that last until reboot, ask before running them, and print the permanent option for the user to choose.
 - **Auth:** admin-only routes check `AdminAuth::is_admin`. Secrets are compared with `admin::ct_eq`. See ADR 0004.
 - **Rust style:** `anyhow` for errors, `tracing` for logs ("P{n} …" for player-scoped messages, 1-based). Comments explain *why*, not what.
 - **Web:** no frameworks and no build step. Touch handling uses Pointer Events. All buttons go through `updateButtons()`, which hit-tests every active pointer so thumbs can slide between buttons.

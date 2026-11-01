@@ -16,7 +16,7 @@ admin browser ──WS /admin/ws (JSON)─▶ admin.rs ──┘  slots: pad + o
 | `src/protocol.rs` | Frame encode/decode, button bit constants, `GamepadState`. The spec is [protocol.md](protocol.md). |
 | `src/session.rs` | `Sessions`: one `Mutex<Inner>` holding `max_players` slots. Each slot is a **pad** plus an **owner** (token, name, last state, connection). Exposes `join`, `update`, `set_name`, `leave` and `reap`, plus the admin operations `swap`, `kick`, `unplug`, `identify`, `set_locked` and `snapshot`. |
 | `src/backend/mod.rs` | The `Backend` and `Pad` traits, `BackendKind` (CLI enum) and `create()`. |
-| `src/backend/*.rs` | One file per backend. Only `log` exists so far; see [roadmap.md](roadmap.md). |
+| `src/backend/*.rs` | One file per backend: `log` (any OS), `vigem` (Windows), `uinput` (Linux). See [roadmap.md](roadmap.md). |
 | `web/index.html` | The landing page: name, join code if one is required, **Join** or **Manage**. |
 | `web/pad.html`, `controller.js`, `pad.css` | The controller: touch handling, state encoding, connection and reconnect, fullscreen and wake lock, the name, and identify flashes. |
 | `web/admin.html`, `admin.js`, `pages.css` | The admin page: login, join QR, lock toggle, and one card per slot with a live preview and actions. |

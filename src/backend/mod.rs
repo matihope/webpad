@@ -1,6 +1,8 @@
 //! Output backends: where phone input ends up. See `docs/architecture.md` for the contract.
 
 mod log;
+#[cfg(target_os = "linux")]
+mod uinput;
 #[cfg(windows)]
 mod vigem;
 
@@ -28,6 +30,9 @@ pub enum BackendKind {
     /// Virtual Xbox 360 controllers via the ViGEmBus driver (Windows)
     #[cfg(windows)]
     Vigem,
+    /// Virtual Xbox 360 controllers via /dev/uinput (Linux)
+    #[cfg(target_os = "linux")]
+    Uinput,
 }
 
 pub fn create(kind: BackendKind) -> anyhow::Result<Box<dyn Backend>> {
@@ -35,6 +40,8 @@ pub fn create(kind: BackendKind) -> anyhow::Result<Box<dyn Backend>> {
         BackendKind::Log => Box::new(log::LogBackend),
         #[cfg(windows)]
         BackendKind::Vigem => Box::new(vigem::VigemBackend::new()?),
+        #[cfg(target_os = "linux")]
+        BackendKind::Uinput => Box::new(uinput::UinputBackend::new()?),
         BackendKind::Auto => auto(),
     })
 }
@@ -46,7 +53,12 @@ fn auto() -> Box<dyn Backend> {
         Ok(backend) => return Box::new(backend),
         Err(e) => tracing::warn!("{e:#}; falling back to the log backend (no controllers will be created)"),
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
+    match uinput::UinputBackend::new() {
+        Ok(backend) => return Box::new(backend),
+        Err(e) => tracing::warn!("{e:#}; falling back to the log backend (no controllers will be created)"),
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
     tracing::warn!(
         "no gamepad backend for this OS yet (see docs/roadmap.md); using the log backend, so no controllers will be created"
     );

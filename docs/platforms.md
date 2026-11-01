@@ -28,11 +28,29 @@
     - Input then follows the same path Steam Link's own controller forwarding would (about 30–35 ms one way from the Mac to kolpa2, measured 2026-11-01).
 - Test host: `ssh kolpa2` (dual-boot; it sometimes comes up in Linux on the same address). It has ViGEmBus, VS Build Tools and rustup (MSVC), but Smart App Control is On, so build on the Mac (above).
 
-### Linux: `uinput` (planned, milestone 2)
-- It creates a device through `/dev/uinput` with the `evdev` crate. To look like a standard pad to SDL and Steam, it should advertise BTN_SOUTH/EAST/NORTH/WEST, BTN_TL/TR, BTN_SELECT/START/MODE, BTN_THUMBL/R, ABS_X/Y/RX/RY, ABS_Z/RZ for the triggers and ABS_HAT0X/Y for the D-pad. Using the Xbox 360 VID/PID (045e:028e) helps.
-- evdev's Y axis is **positive-down**, so Y must be flipped.
-- Permissions: `/dev/uinput` is usually root-only. The fix is a udev rule such as `KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"` plus adding the user to `input`, or running with sudo.
-- Test host: `ssh kolpa`. It runs Arch, is headless and has cargo installed. As of 2026-11-01 `/dev/uinput` was root:root 0600. Use `evtest` to check the device.
+### Linux: `uinput` (works; verified on kolpa 2026-11-01)
+- Each pad is created with a few ioctls on `/dev/uinput` (through `libc`) and mirrors what the kernel's `xpad` driver exposes for a wired Xbox 360 pad:
+  - name `Microsoft X-Box 360 pad`, ID `045e:028e` version `0110`, bus USB;
+  - buttons BTN_SOUTH/EAST/NORTH/WEST, TL/TR, SELECT/START/MODE, THUMBL/R;
+  - sticks ABS_X/Y/RX/RY (−32768…32767, fuzz 16, flat 128), triggers ABS_Z/RZ (0…255), D-pad ABS_HAT0X/Y.
+  - SDL, Steam and Wine/Proton therefore map it like a real 360 pad.
+- **Phys is `webpad/P<n>`**, so `/proc/bus/input/devices` and udev rules can tell webpad's pads apart.
+  - The `evdev` crate (0.13.2) wasn't used: its `UI_SET_PHYS` is declared with the size of `char` instead of `char*`, so the kernel answers EINVAL.
+- evdev's Y axis is **positive-down**. Y is flipped with bitwise NOT like xpad does, so a centered stick reads −1, as on real hardware.
+- udev tags the pads `ID_INPUT_JOYSTICK=1` and `uaccess`. On a desktop, the logged-in user (and their games) can read them without extra setup, and the kernel adds a `js*` node too.
+- **Permissions:** `/dev/uinput` is usually root-only. Steam's udev rule (in the `steam` package on Arch, `steam-devices` on Debian and Ubuntu) tags it `uaccess`, so on machines with Steam the logged-in user usually has access already.
+  - **Started from a terminal** (stdin and stderr are TTYs), webpad explains the problem, shows the command and asks `[Y/n]`. It then runs the command and retries; each fix is offered once.
+    - If access is missing: `sudo setfacl -m u:<uid>:rw /dev/uinput`. It covers only this user and only this node, and is gone after a reboot because the node is recreated at boot.
+    - If `/dev/uinput` is missing: `sudo modprobe uinput`, also until reboot.
+  - Following [ADR 0005](decisions/0005-minimal-host-changes.md), webpad **never installs anything permanent**. The error message prints the permanent option instead: Steam's rule, `KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"`, in `/etc/udev/rules.d/60-webpad.rules`. That rule doesn't cover SSH or headless sessions.
+  - **Without a terminal**, or after the user declines, `--backend uinput` exits with both options, and `auto` warns and falls back to `log`.
+- **Verified 2026-11-01 on kolpa** (Arch, kernel 7.2):
+  - `tools/drive-pad.mjs` and `tools/read-pad.py` showed the right key, axis and hat values for each step.
+  - The pad stays plugged in during the grace period and disappears after it.
+  - Not tested yet: a real game or Steam on a Linux desktop.
+- Test host `ssh kolpa`: access there is temporary until reboot.
+  - An ACL on `/dev/uinput` for mateusz.
+  - A runtime rule `/run/udev/rules.d/60-webpad-test.rules` that makes `webpad/*` event nodes owned by mateusz, so the pads can be read back. A `RUN+="setfacl …"` rule failed inside udev (exit 1); `OWNER=` works.
 
 ### macOS: `keyboard` (planned, milestone 3)
 - There is no practical public API for a virtual gamepad. DriverKit virtual HID needs an entitlement that Apple must grant, and Karabiner's driver only does keyboard and pointer. See [ADR 0003](decisions/0003-macos-keyboard-fallback.md).

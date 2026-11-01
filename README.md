@@ -6,7 +6,7 @@ Use phones as game controllers, with no app to install. Run `webpad` on the comp
 phone browser ──Wi-Fi──▶ webpad (this computer) ──▶ virtual Xbox controller ──▶ your game
 ```
 
-> **Status:** early. The server, phone UI, admin page and the Windows `vigem` backend (virtual Xbox 360 controllers) work. Linux is in progress, and macOS can't create virtual gamepads (see below). See [docs/roadmap.md](docs/roadmap.md).
+> **Status:** early. The server, phone UI, admin page and the gamepad backends for Windows (`vigem`) and Linux (`uinput`) work; both create virtual Xbox 360 controllers. macOS can't create virtual gamepads (see below). See [docs/roadmap.md](docs/roadmap.md).
 
 ## Quick start
 
@@ -38,7 +38,7 @@ iPhone browsers can't make a web page fullscreen. For a fullscreen controller, o
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `--port` | 8080 | HTTP and WebSocket port |
-| `--backend` | `auto` | `auto`, `log`, or `vigem` (Windows). `uinput` (Linux) is coming |
+| `--backend` | `auto` | `auto`, `log`, `vigem` (Windows) or `uinput` (Linux) |
 | `--max-players` | 4 | Number of player slots (1–16) |
 | `--grace` | 30 | Seconds a disconnected phone keeps its slot |
 | `--join-code` | none | Code players need to join (env `WEBPAD_JOIN_CODE`). The QR code includes it |
@@ -53,12 +53,14 @@ Logging verbosity is set with `RUST_LOG`, for example `RUST_LOG=webpad=debug`.
 
 - **Windows:** install the [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) driver once (or run `tools/windows-setup.bat`). Up to 4 controllers.
 - **Steam Link:** run webpad on the PC that runs the game. If your phones are on a different network than the PC, tunnel it through the streaming machine; see [docs/platforms.md](docs/platforms.md#windows-vigem-works-verified-over-steam-link-2026-11-01).
-- **Linux:** allow access to `/dev/uinput`:
-  ```sh
-  echo 'KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-webpad.rules
-  sudo usermod -aG input $USER   # then log out and back in
-  sudo udevadm control --reload && sudo udevadm trigger
-  ```
+- **Linux:** webpad needs access to `/dev/uinput`. If Steam is installed, you usually have it already, because Steam's udev rule grants it to the logged-in user.
+  - Otherwise, when started from a terminal, webpad **offers a fix that lasts until the next reboot**: `sudo setfacl -m u:<your uid>:rw /dev/uinput`. Nothing is changed permanently.
+  - For permanent access, install the same rule Steam uses:
+    ```sh
+    echo 'KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-webpad.rules
+    sudo udevadm control --reload && sudo udevadm trigger --sysname-match=uinput
+    ```
+    It covers whoever is logged in at the machine's screen, not SSH sessions.
 - **macOS:** macOS doesn't let apps create virtual gamepads without an entitlement from Apple ([why](docs/decisions/0003-macos-keyboard-fallback.md)). To play on a Mac, stream from a Windows PC with Steam Link and run webpad on the PC.
 
 ## Troubleshooting
