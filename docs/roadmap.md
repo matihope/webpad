@@ -27,12 +27,12 @@ Update the checkboxes as work lands and record details in the [dev log](log/).
 ## Milestone 2: OS gamepad backends
 - [ ] `uinput` backend on Linux. Test on `ssh kolpa` with `evtest`. Needs uinput permissions; see platforms.md.
 - [x] `vigem` backend on Windows (code; type-checks from macOS via `--target x86_64-pc-windows-gnu`)
-- [ ] verify `vigem` on kolpa2: phones show up in `joy.cpl` and in Steam (over Steam Link). Needs ViGEmBus installed by the user.
+- [x] verify `vigem` on kolpa2 over Steam Link (2026-11-01, user-confirmed; Xbox 360 controller #1 plugged in from an SSH session)
 - [x] `--backend auto` picks the OS backend, falling back to `log`, and says why
 - [ ] CI cross-compile check for each OS (`cargo check --target …`)
 
 ## Milestone 3: Keyboard backend (macOS-usable)
-- [ ] `keyboard` backend via `enigo`, with a per-slot key map and a config file
+- [ ] `keyboard` backend with a per-slot key map and a config file *(deprioritized 2026-11-01: digital keys don't help analog or N-controller games; Steam Link from Windows covers the user's case)*
 - [ ] Detect missing Accessibility permission and show a clear error
 
 ## Milestone 4: Polish

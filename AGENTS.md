@@ -3,7 +3,7 @@
 Instructions for coding agents working in this repo. The user-facing overview is in [README.md](README.md).
 
 ## What this is
-webpad is a Rust server that serves a phone controller web page and turns each connected phone into a virtual gamepad on the host. It uses ViGEm on Windows and uinput on Linux, with a keyboard fallback on macOS. Read [docs/architecture.md](docs/architecture.md) first.
+webpad is a Rust server that serves a phone controller web page and turns each connected phone into a virtual gamepad on the host. It uses ViGEm on Windows and uinput on Linux (planned). macOS can't create virtual gamepads ([ADR 0003](docs/decisions/0003-macos-keyboard-fallback.md)). Read [docs/architecture.md](docs/architecture.md) first.
 
 ## Start-of-session checklist
 1. Read the **latest entry in `docs/log/`** and [docs/roadmap.md](docs/roadmap.md) to see where things stand.
@@ -25,7 +25,7 @@ src/session.rs       player slots (pad + owner), tokens, reconnect, release, rea
 src/backend/         Backend/Pad traits + one file per backend
 web/                 pages, embedded into the binary, plain HTML/CSS/JS with no build step:
                      index.html (landing), pad.html + controller.js (controller), admin.html + admin.js
-tools/               smoke-test scripts (Node + headless Chrome)
+tools/               smoke-test scripts (Node + headless Chrome), windows-setup.bat (ViGEmBus + Build Tools)
 docs/                architecture, protocol, platforms, roadmap, decisions/, log/
 ```
 
@@ -45,10 +45,15 @@ In debug builds `rust-embed` serves `web/` from disk, so a browser reload picks 
 ## Test machines
 - **This machine:** macOS. Use it for development and the `log` backend.
 - **`ssh kolpa`:** headless Arch Linux with cargo. Use it for the uinput backend and check with `evtest`. `/dev/uinput` is root-only there, so ask the user before changing udev rules or groups.
-- **`ssh kolpa2`:** Windows (cmd shell). Use it for the ViGEm backend. It has no Rust and no ViGEmBus yet, so ask before installing.
+- **`ssh kolpa2`:** Windows (cmd shell; dual-boot, so it may answer from Linux instead). Use it for the ViGEm backend. ViGEmBus is installed. The SSH session isn't elevated, so admin installs go through a script the user double-clicks (see `tools/windows-setup.bat`).
 
 The repo is on GitHub (`origin` = https://github.com/matihope/webpad). Test machines build from a clone: push first, then `git pull` there.
-- kolpa2: the clone is at `%USERPROFILE%\code\webpad`. Rust is a user-level rustup with the `x86_64-pc-windows-gnu` toolchain (no Visual Studio). Build with `cargo build --release`.
+- kolpa2: **Smart App Control blocks `cargo build` there** (build scripts can't run), so cross-compile on macOS and copy the exe:
+  - `brew install mingw-w64` (once)
+  - `cargo build --release --target x86_64-pc-windows-gnu`
+  - `scp target/x86_64-pc-windows-gnu/release/webpad.exe kolpa2:C:/Users/23era/webpad/`
+  - To run it with the Steam Link tunnel, see `docs/platforms.md`.
+  - There is also a clone at `%USERPROFILE%\code\webpad`, with rustup (MSVC) and VS Build Tools.
 - From macOS, `cargo check --target x86_64-pc-windows-gnu` type-checks the Windows-only code.
 
 ## Conventions
