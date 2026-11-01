@@ -13,7 +13,16 @@ Update the checkboxes as work lands and record details in the [dev log](log/).
 - [x] `log` backend
 - [x] controller UI: floating sticks, D-pad with diagonals, ABXY, bumpers and triggers, Back/Guide/Start, L3/R3, multi-touch with slide-between-buttons, haptics, RTT, fullscreen, rotate overlay, iOS home-screen hint
 - [x] terminal QR code with the LAN URL
-- [ ] try on real phones: Android and iPhone *(needs a human)*
+- [x] try on a real iPhone (Safari + home screen), 2026-11-01
+- [ ] try on a real Android phone *(needs a human)*
+
+## Milestone 1b: Admin and auth ✅
+- [x] landing page (Join or Manage), `/pad` for the controller, `/admin` for managing
+- [x] optional `--join-code` (in the QR) and `--admin-password` (cookie session), ADR 0004
+- [x] protocol v2: player names, Slot (reordered), Identify, Reject 4–6
+- [x] admin page: join QR (fullscreen on click), lock joining, per-player cards with live input preview, reorder, identify, kick, remove disconnected
+- [x] unit tests (session ops, protocol, auth) and `tools/admin-smoke.mjs`
+- [ ] try on real phones: reorder, identify, kick *(needs a human)*
 
 ## Milestone 2: OS gamepad backends
 - [ ] `uinput` backend on Linux. Test on `ssh kolpa` with `evtest`. Needs uinput permissions; see platforms.md.

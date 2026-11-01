@@ -1,32 +1,12 @@
-:root {
-  --bg: #0e0f12;
-  --surface: #1b1d23;
-  --surface-on: #3a3e4a;
-  --border: #2c2f38;
-  --text: #e8e9ee;
-  --muted: #8a8f9c;
-  --player: var(--muted);
-  --a: #4ade80;
-  --b: #f87171;
-  --x: #60a5fa;
-  --y: #facc15;
-}
-
-* { box-sizing: border-box; }
-
+/* Controller page. */
 html, body {
-  margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
-  color: var(--text);
-  font: 600 16px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   /* Stop scrolling, zooming, text selection and iOS long-press menus. */
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
 
@@ -190,4 +170,33 @@ html, body {
 #rotate { display: none; z-index: 20; }
 @media (orientation: portrait) {
   #rotate { display: flex; }
+}
+
+#name-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+#name-label:empty { display: none; }
+
+#start .field { margin: 0.75rem 0; }
+#stopped form { display: flex; flex-direction: column; align-items: center; gap: 0.9rem; }
+#stopped-text { color: var(--text); font-size: 1.2rem; }
+#stopped .primary { min-width: 12rem; padding: 0.8rem 1.2rem; }
+
+/* Identify / moved: blink the whole screen in the player color. */
+#flash {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: var(--player);
+  opacity: 0;
+}
+#flash.on { animation: flash 1.2s ease-out; }
+@keyframes flash {
+  0%, 30%, 60% { opacity: 0.85; }
+  15%, 45%, 100% { opacity: 0; }
 }

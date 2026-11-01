@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f12">
+  <title>webpad · Manage</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body class="admin">
+  <header>
+    <a href="/" class="brand"><img src="icon.svg" alt="" width="28" height="28"> webpad</a>
+    <span class="title">Manage players</span>
+    <span id="meta" class="meta"></span>
+    <button id="logout" hidden>Log out</button>
+  </header>
+
+  <form id="login" class="login" hidden>
+    <h1>Manage players</h1>
+    <label class="field">
+      <span>Admin password</span>
+      <input id="password" type="password" autocomplete="current-password" required autofocus>
+    </label>
+    <p id="login-error" class="error" hidden>Wrong password</p>
+    <button type="submit" class="primary">Log in</button>
+  </form>
+
+  <main id="app" hidden>
+    <section class="join">
+      <button id="qr-button" class="qr" title="Show large QR code"><img id="qr" alt="Join QR code"></button>
+      <div class="join-info">
+        <p class="label">Players join at</p>
+        <p id="join-url" class="url"></p>
+        <p id="join-code" class="code" hidden></p>
+        <div class="join-actions">
+          <label class="toggle"><input id="locked" type="checkbox"> Lock joining</label>
+          <button id="unplug-stale">Remove all disconnected</button>
+        </div>
+      </div>
+    </section>
+
+    <p id="banner" class="banner" hidden></p>
+    <section id="slots" class="slots"></section>
+  </main>
+
+  <div id="qr-overlay" class="qr-overlay" hidden>
+    <img id="qr-big" alt="Join QR code">
+    <p id="qr-big-url" class="url"></p>
+    <p class="hint">Click anywhere to close</p>
+  </div>
+
+  <template id="slot-template">
+    <article class="slot">
+      <div class="slot-head">
+        <span class="badge"></span>
+        <span class="name"></span>
+        <span class="status"></span>
+      </div>
+      <div class="preview" aria-hidden="true">
+        <div class="pv-top">
+          <span class="pv-trig" data-t="lt"><i></i></span><span class="pv-btn wide" data-b="LB">LB</span>
+          <span class="pv-btn" data-b="BACK">⧉</span><span class="pv-btn" data-b="GUIDE">⌂</span><span class="pv-btn" data-b="START">≡</span>
+          <span class="pv-btn wide" data-b="RB">RB</span><span class="pv-trig" data-t="rt"><i></i></span>
+        </div>
+        <div class="pv-main">
+          <span class="pv-stick" data-s="l"><i></i></span>
+          <span class="pv-dpad">
+            <span class="pv-btn" data-b="DPAD_UP"></span><span class="pv-btn" data-b="DPAD_LEFT"></span>
+            <span class="pv-btn" data-b="DPAD_RIGHT"></span><span class="pv-btn" data-b="DPAD_DOWN"></span>
+          </span>
+          <span class="pv-face">
+            <span class="pv-btn y" data-b="Y">Y</span><span class="pv-btn x" data-b="X">X</span>
+            <span class="pv-btn b" data-b="B">B</span><span class="pv-btn a" data-b="A">A</span>
+          </span>
+          <span class="pv-stick" data-s="r"><i></i></span>
+        </div>
+      </div>
+      <p class="empty">Empty slot</p>
+      <div class="slot-actions">
+        <button data-act="up" title="Move up">▲</button>
+        <button data-act="down" title="Move down">▼</button>
+        <span class="spacer"></span>
+        <button data-act="identify" title="Flash this player's phone">Identify</button>
+        <button data-act="kick" class="danger" title="Disconnect this player">Kick</button>
+        <button data-act="unplug" class="danger" title="Unplug this controller now">Remove</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="common.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

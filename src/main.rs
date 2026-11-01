@@ -1,3 +1,4 @@
+mod admin;
 mod backend;
 mod protocol;
 mod server;
@@ -13,7 +14,9 @@ use clap::Parser;
 use qrcode::QrCode;
 use qrcode::render::unicode::Dense1x2;
 
+use crate::admin::AdminAuth;
 use crate::backend::BackendKind;
+use crate::server::AppState;
 use crate::session::Sessions;
 
 /// Use phones as game controllers: serves a controller web page and turns each
@@ -33,6 +36,12 @@ struct Args {
     /// Seconds a disconnected player's pad stays plugged in, waiting for a reconnect
     #[arg(long, default_value_t = 30)]
     grace: u64,
+    /// Password for the Manage page. Without one, anyone on the network can manage players
+    #[arg(long, env = "WEBPAD_ADMIN_PASSWORD", hide_env_values = true)]
+    admin_password: Option<String>,
+    /// Code players must enter to join (the join QR code includes it)
+    #[arg(long, env = "WEBPAD_JOIN_CODE", hide_env_values = true)]
+    join_code: Option<String>,
 }
 
 #[tokio::main]
@@ -66,19 +75,37 @@ async fn main() -> anyhow::Result<()> {
             // Input frames are tiny; don't let Nagle batch them.
             let _ = tcp.set_nodelay(true);
         });
-    print_join_info(args.port);
+    let base = format!("http://{}:{}", local_ip_address::local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST)), args.port);
+    let join_code = args.join_code.filter(|c| !c.is_empty());
+    let join_url = match &join_code {
+        Some(code) => format!("{base}/pad?code={}", percent_encode(code)),
+        None => format!("{base}/pad"),
+    };
+    let admin_password = args.admin_password.filter(|p| !p.is_empty());
+    print_join_info(&join_url, &base, admin_password.is_some());
 
+    let app = Arc::new(AppState { sessions, auth: AdminAuth::new(admin_password), join_code, join_url });
     // No graceful shutdown: open WebSockets would keep Ctrl-C waiting, and the OS
     // unplugs every virtual device when the process exits anyway.
-    axum::serve(listener, server::router(sessions)).await?;
+    axum::serve(listener, server::router(app)).await?;
     Ok(())
 }
 
-fn print_join_info(port: u16) {
-    let ip = local_ip_address::local_ip().unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
-    let url = format!("http://{ip}:{port}");
-    if let Ok(code) = QrCode::new(&url) {
+fn print_join_info(join_url: &str, base: &str, admin_password: bool) {
+    if let Ok(code) = QrCode::new(join_url) {
         println!("\n{}", code.render::<Dense1x2>().quiet_zone(true).build());
     }
-    println!("Scan the code or open {url} on your phone (same Wi-Fi network).\n");
+    println!("Players: scan the code or open {join_url} (same Wi-Fi network).");
+    let access = if admin_password { "password required" } else { "open to everyone, set --admin-password to protect it" };
+    println!("Manage:  {base}/admin ({access})\n");
+}
+
+/// Percent-encode everything except unreserved URL characters.
+fn percent_encode(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
 }

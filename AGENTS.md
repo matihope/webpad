@@ -18,11 +18,13 @@ webpad is a Rust server that serves a phone controller web page and turns each c
 ## Repo map
 ```
 src/main.rs          CLI, startup, QR code
-src/server.rs        axum: static files + /ws handler
+src/server.rs        AppState, router, static files, phone /ws handler
+src/admin.rs         admin auth (password/cookie), /api/*, admin JSON socket, join QR
 src/protocol.rs      binary frames (spec: docs/protocol.md)
-src/session.rs       player slots, tokens, reconnect, release, reap
+src/session.rs       player slots (pad + owner), tokens, reconnect, release, reap, admin ops
 src/backend/         Backend/Pad traits + one file per backend
-web/                 phone UI (plain HTML/CSS/JS, no build step, embedded into the binary)
+web/                 pages, embedded into the binary, plain HTML/CSS/JS with no build step:
+                     index.html (landing), pad.html + controller.js (controller), admin.html + admin.js
 tools/               smoke-test scripts (Node + headless Chrome)
 docs/                architecture, protocol, platforms, roadmap, decisions/, log/
 ```
@@ -30,11 +32,13 @@ docs/                architecture, protocol, platforms, roadmap, decisions/, log
 ## Commands
 ```sh
 cargo build
-cargo test                                   # protocol + session unit tests
+cargo test                                   # protocol, session and admin unit tests
 cargo clippy --all-targets                   # keep it warning-free
 cargo run -- --backend log --port 8099       # run locally; the log backend prints input
-node tools/fake-phones.mjs                   # protocol smoke test (server must run with --max-players 2)
-node tools/ui-smoke.mjs <outdir>             # touch/UI smoke test via headless Chrome (see file header)
+node tools/fake-phones.mjs                   # protocol smoke test (server: --max-players 2 --join-code 1234)
+node tools/admin-smoke.mjs                   # login + every admin action (server: --max-players 3 --admin-password test --join-code 1234)
+node tools/ui-smoke.mjs <outdir>             # controller touch test via headless Chrome (see file header)
+node tools/pages-smoke.mjs <outdir>          # screenshots of landing + admin pages (see file header)
 ```
 In debug builds `rust-embed` serves `web/` from disk, so a browser reload picks up UI changes without rebuilding.
 
@@ -52,6 +56,8 @@ Copy code to the test machines with `rsync`/`scp` (excluding `target/`), or have
   - Flip Y wherever the OS uses positive-down.
   - Put OS-only code behind `#[cfg(target_os = "…")]` on both the module and its `BackendKind` variant.
 - **Stuck inputs:** every disconnect path must release inputs. `Sessions::leave` does this, so don't bypass it.
+- **Pads never move between slots.** Games see controllers in plug-in order, so admin reordering moves owners, not pads (see `docs/architecture.md`).
+- **Auth:** admin-only routes check `AdminAuth::is_admin`. Secrets are compared with `admin::ct_eq`. See ADR 0004.
 - **Rust style:** `anyhow` for errors, `tracing` for logs ("P{n} …" for player-scoped messages, 1-based). Comments explain *why*, not what.
 - **Web:** no frameworks and no build step. Touch handling uses Pointer Events. All buttons go through `updateButtons()`, which hit-tests every active pointer so thumbs can slide between buttons.
 - **Dependencies:** add them with `cargo add`. Keep the dependency list short.

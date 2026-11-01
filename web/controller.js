@@ -1,19 +1,22 @@
 'use strict';
 
 // Wire format: see docs/protocol.md. Keep in sync with src/protocol.rs.
-const PROTOCOL_VERSION = 1;
-const MSG = { HELLO: 0x01, STATE: 0x02, PING: 0x03, WELCOME: 0x81, PONG: 0x82, RUMBLE: 0x83, REJECT: 0x84 };
-const BTN = {
-  DPAD_UP: 0x0001, DPAD_DOWN: 0x0002, DPAD_LEFT: 0x0004, DPAD_RIGHT: 0x0008,
-  START: 0x0010, BACK: 0x0020, LS: 0x0040, RS: 0x0080, LB: 0x0100, RB: 0x0200,
-  GUIDE: 0x0400, A: 0x1000, B: 0x2000, X: 0x4000, Y: 0x8000,
+// BTN, playerColor and store come from common.js.
+const PROTOCOL_VERSION = 2;
+const MSG = {
+  HELLO: 0x01, STATE: 0x02, PING: 0x03, NAME: 0x04,
+  WELCOME: 0x81, PONG: 0x82, RUMBLE: 0x83, REJECT: 0x84, SLOT: 0x85, IDENTIFY: 0x86,
 };
+const REJECT = { FULL: 1, BAD_VERSION: 2, BACKEND: 3, BAD_CODE: 4, KICKED: 5, LOCKED: 6 };
 const REJECT_TEXT = {
-  1: 'Server is full',
-  2: 'Server was updated — reload the page',
-  3: 'Server could not create a controller',
+  [REJECT.FULL]: 'Server is full',
+  [REJECT.BAD_VERSION]: 'Server was updated — reload the page',
+  [REJECT.BACKEND]: 'Server could not create a controller',
+  [REJECT.BAD_CODE]: 'Wrong join code',
+  [REJECT.KICKED]: 'You were removed by the host',
+  [REJECT.LOCKED]: 'The host has locked joining',
 };
-const PLAYER_COLORS = ['#4ade80', '#f87171', '#60a5fa', '#facc15', '#c084fc', '#fb923c', '#22d3ee', '#f472b6'];
+const MAX_NAME_BYTES = 24;
 const PING_MS = 500;
 const PONG_TIMEOUT_MS = 2500;
 
@@ -222,8 +225,17 @@ function saveToken(bytes) {
   } catch {}
 }
 
+// A join code from the QR link is remembered, then removed from the address bar.
+const urlCode = new URLSearchParams(location.search).get('code');
+if (urlCode !== null) {
+  store.set(CODE_KEY, urlCode);
+  history.replaceState(null, '', location.pathname);
+}
+
 function connect() {
-  const sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  const code = store.get(CODE_KEY);
+  const query = code ? `?code=${encodeURIComponent(code)}` : '';
+  const sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws${query}`);
   sock.binaryType = 'arraybuffer';
   ws = sock;
   setConn(rejectText || (retryMs === 500 ? 'connecting…' : 'reconnecting…'));
@@ -268,6 +280,17 @@ function onMessage(dv) {
       showPlayer();
       setConn('connected');
       flush(true);
+      sendName();
+      break;
+    case MSG.SLOT:
+      // The host reordered players: same connection, new number.
+      slot = dv.getUint8(1);
+      showPlayer();
+      flash();
+      flush(true);
+      break;
+    case MSG.IDENTIFY:
+      flash();
       break;
     case MSG.PONG: {
       lastPong = performance.now();
@@ -285,8 +308,12 @@ function onMessage(dv) {
       const reason = dv.getUint8(1);
       rejectText = REJECT_TEXT[reason] || 'Rejected by server';
       setConn(rejectText);
-      if (reason === 2) stopped = true;
       retryMs = 3000;
+      // These won't fix themselves by retrying; ask the player what to do.
+      if (reason === REJECT.BAD_VERSION || reason === REJECT.BAD_CODE || reason === REJECT.KICKED) {
+        stopped = true;
+        showStopped(reason);
+      }
       break;
     }
   }
@@ -312,9 +339,58 @@ function setConn(text) {
 
 function showPlayer() {
   $('#player').textContent = slot === null ? 'P–' : `P${slot + 1}`;
-  document.documentElement.style.setProperty(
-    '--player', slot === null ? 'var(--muted)' : PLAYER_COLORS[slot % PLAYER_COLORS.length]);
+  $('#name-label').textContent = store.get(NAME_KEY);
+  document.documentElement.style.setProperty('--player', slot === null ? 'var(--muted)' : playerColor(slot));
 }
+
+/** Full-screen blink in the player color, so the host can see who is who. */
+function flash() {
+  const el = $('#flash');
+  el.classList.remove('on');
+  void el.offsetWidth; // restart the animation
+  el.classList.add('on');
+  navigator.vibrate?.([120, 80, 120]);
+}
+
+/** Trim to MAX_NAME_BYTES of UTF-8 without splitting a character. */
+function clampName(name) {
+  const enc = new TextEncoder();
+  let out = name.trim();
+  while (enc.encode(out).length > MAX_NAME_BYTES) out = [...out].slice(0, -1).join('');
+  return out;
+}
+
+function sendName() {
+  if (!ws || ws.readyState !== WebSocket.OPEN || slot === null) return;
+  const bytes = new TextEncoder().encode(clampName(store.get(NAME_KEY)));
+  const frame = new Uint8Array(2 + bytes.length);
+  frame[0] = MSG.NAME;
+  frame[1] = bytes.length;
+  frame.set(bytes, 2);
+  ws.send(frame);
+}
+
+/** Overlay for rejections that need the player: wrong code, kicked, outdated page. */
+let stoppedReason = null;
+function showStopped(reason) {
+  stoppedReason = reason;
+  $('#stopped-text').textContent = REJECT_TEXT[reason];
+  $('#stopped-code').hidden = reason !== REJECT.BAD_CODE;
+  $('#stopped-code input').value = store.get(CODE_KEY);
+  $('#rejoin').textContent = reason === REJECT.BAD_VERSION ? 'Reload' : 'Join again';
+  $('#stopped').hidden = false;
+}
+
+$('#stopped-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (stoppedReason === REJECT.BAD_VERSION) return location.reload();
+  if (!$('#stopped-code').hidden) store.set(CODE_KEY, $('#stopped-code input').value.trim());
+  $('#stopped').hidden = true;
+  stopped = false;
+  rejectText = null;
+  retryMs = 500;
+  connect();
+});
 
 // ---- Fullscreen, orientation, wake lock -------------------------------------
 
@@ -339,7 +415,16 @@ function updateFullscreenButton() {
   $('#fs').hidden = !canFullscreen || !!inFullscreen;
 }
 
-$('#start').addEventListener('click', () => {
+$('#name').value = store.get(NAME_KEY);
+$('#name').addEventListener('input', () => {
+  const clamped = clampName($('#name').value);
+  if (new TextEncoder().encode($('#name').value.trim()).length > MAX_NAME_BYTES) $('#name').value = clamped;
+});
+$('#start').addEventListener('click', (e) => {
+  if (e.target.closest('input, label')) return; // typing a name, not starting yet
+  store.set(NAME_KEY, clampName($('#name').value));
+  showPlayer();
+  sendName();
   $('#start').hidden = true;
   enterFullscreen();
   keepAwake();

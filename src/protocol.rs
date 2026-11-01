@@ -3,7 +3,10 @@
 
 use anyhow::{bail, ensure};
 
-pub const PROTOCOL_VERSION: u8 = 1;
+pub const PROTOCOL_VERSION: u8 = 2;
+
+/// Longest player name in bytes (UTF-8).
+pub const MAX_NAME_LEN: usize = 24;
 
 /// Reconnect token handed out by the server. All zeroes means "no token".
 pub type Token = [u8; 16];
@@ -46,7 +49,7 @@ pub mod buttons {
 }
 
 /// Full controller state. Axes follow XInput: positive Y is up.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct GamepadState {
     pub buttons: u16,
     pub lx: i16,
@@ -57,11 +60,12 @@ pub struct GamepadState {
     pub rt: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientMsg {
     Hello { version: u8, token: Option<Token> },
     State(GamepadState),
     Ping(u32),
+    Name(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,6 +74,9 @@ pub enum RejectReason {
     Full = 1,
     BadVersion = 2,
     BackendError = 3,
+    BadCode = 4,
+    Kicked = 5,
+    Locked = 6,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,21 +86,36 @@ pub enum ServerMsg {
     #[allow(dead_code)] // sent once backends report rumble (milestone 4)
     Rumble { low: u8, high: u8 },
     Reject(RejectReason),
+    /// The host moved this player to another slot.
+    Slot(u8),
+    /// Flash and vibrate the phone so the host can tell who is who.
+    Identify,
 }
 
 const HELLO: u8 = 0x01;
 const STATE: u8 = 0x02;
 const PING: u8 = 0x03;
+const NAME: u8 = 0x04;
 const WELCOME: u8 = 0x81;
 const PONG: u8 = 0x82;
 const RUMBLE: u8 = 0x83;
 const REJECT: u8 = 0x84;
+const SLOT: u8 = 0x85;
+const IDENTIFY: u8 = 0x86;
 
 impl ClientMsg {
     pub fn decode(buf: &[u8]) -> anyhow::Result<Self> {
         let Some((&kind, body)) = buf.split_first() else {
             bail!("empty frame");
         };
+        if kind == NAME {
+            let Some((&len, name)) = body.split_first() else {
+                bail!("name frame without length");
+            };
+            ensure!(name.len() == len as usize, "name frame: length byte says {len}, got {}", name.len());
+            ensure!(name.len() <= MAX_NAME_LEN, "name longer than {MAX_NAME_LEN} bytes");
+            return Ok(Self::Name(std::str::from_utf8(name)?.trim().to_owned()));
+        }
         let want = match kind {
             HELLO => 17,
             STATE => 12,
@@ -143,6 +165,10 @@ impl ClientMsg {
                 out.push(PING);
                 out.extend(t.to_le_bytes());
             }
+            Self::Name(ref name) => {
+                out.extend([NAME, name.len() as u8]);
+                out.extend(name.as_bytes());
+            }
         }
         out
     }
@@ -162,6 +188,8 @@ impl ServerMsg {
             }
             Self::Rumble { low, high } => out.extend([RUMBLE, low, high]),
             Self::Reject(reason) => out.extend([REJECT, reason as u8]),
+            Self::Slot(slot) => out.extend([SLOT, slot]),
+            Self::Identify => out.push(IDENTIFY),
         }
         out
     }
@@ -186,6 +214,8 @@ mod tests {
                 rt: 3,
             }),
             ClientMsg::Ping(0xDEAD_BEEF),
+            ClientMsg::Name("Zoë".into()),
+            ClientMsg::Name(String::new()),
         ];
         for msg in msgs {
             assert_eq!(ClientMsg::decode(&msg.encode()).unwrap(), msg);
@@ -203,6 +233,10 @@ mod tests {
         assert!(ClientMsg::decode(&[]).is_err());
         assert!(ClientMsg::decode(&[0x02, 0, 0]).is_err());
         assert!(ClientMsg::decode(&[0x7F]).is_err());
+        assert!(ClientMsg::decode(&[0x04, 5, b'a']).is_err(), "length mismatch");
+        assert!(ClientMsg::decode(&[0x04, 2, 0xFF, 0xFE]).is_err(), "invalid UTF-8");
+        let long = [vec![0x04, 25], vec![b'a'; 25]].concat();
+        assert!(ClientMsg::decode(&long).is_err(), "too long");
     }
 
     #[test]
@@ -212,5 +246,8 @@ mod tests {
         assert_eq!(welcome.len(), 19);
         assert_eq!(ServerMsg::Pong(5).encode(), [0x82, 5, 0, 0, 0]);
         assert_eq!(ServerMsg::Reject(RejectReason::Full).encode(), [0x84, 1]);
+        assert_eq!(ServerMsg::Reject(RejectReason::Kicked).encode(), [0x84, 5]);
+        assert_eq!(ServerMsg::Slot(3).encode(), [0x85, 3]);
+        assert_eq!(ServerMsg::Identify.encode(), [0x86]);
     }
 }

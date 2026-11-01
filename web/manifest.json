@@ -2,7 +2,7 @@
   "name": "webpad",
   "short_name": "webpad",
   "description": "Use your phone as a game controller",
-  "start_url": "/",
+  "start_url": "/pad",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0e0f12",

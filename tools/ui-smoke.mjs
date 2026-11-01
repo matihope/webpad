@@ -1,12 +1,12 @@
-// UI smoke test: drives headless Chrome over CDP with a phone-sized viewport and multi-touch.
+// Controller UI smoke test: drives headless Chrome over CDP with a phone-sized viewport and multi-touch.
 // Usage:
-//   cargo run -- --backend log --port 8099 &
+//   cargo run -- --backend log --port 8099 --join-code 1234 &
 //   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --remote-debugging-port=9333 --user-data-dir=/tmp/webpad-chrome &
 //   node tools/ui-smoke.mjs <screenshot-dir> [http://127.0.0.1:8099/]
 // Then check the server log (A + stick, A→B slide, Down Left, LT+RT) and the screenshots.
 import { writeFileSync } from 'node:fs';
 const SP = process.argv[2];
-const PAGE = process.argv[3] ?? 'http://127.0.0.1:8099/';
+const PAGE = process.argv[3] ?? 'http://127.0.0.1:8099/pad?code=1234';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const target = await (await fetch('http://127.0.0.1:9333/json/new?about:blank', { method: 'PUT' })).json();
 const ws = new WebSocket(target.webSocketDebuggerUrl);
@@ -24,7 +24,7 @@ await cdp('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints:
 await cdp('Page.navigate', { url: PAGE });
 await sleep(1200);
 await shot('1-start');
-await touch('touchStart', [{ x: 400, y: 200, id: 0 }]); await touch('touchEnd', []);
+await touch('touchStart', [{ x: 40, y: 40, id: 0 }]); await touch('touchEnd', []);
 await sleep(400);
 console.log('status:', await evalJs(`document.querySelector('#status').innerText.replace(/\\n/g, ' | ')`));
 await shot('2-idle');

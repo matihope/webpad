@@ -6,11 +6,13 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.104"
 axum = { version = "0.8.9", features = ["ws"] }
-clap = { version = "4.6.7", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive", "env"] }
 local-ip-address = "0.6.13"
-qrcode = { version = "0.14.1", default-features = false }
+qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
 rand = "0.10.3"
 rust-embed = { version = "8.13.0", features = ["mime-guess"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
