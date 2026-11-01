@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0f12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="webpad">
+  <title>webpad</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="pad">
+    <div class="shoulders" style="grid-area: lsh">
+      <div class="btn trigger" data-btn="LT">LT</div>
+      <div class="btn bumper" data-btn="LB">LB</div>
+    </div>
+    <div class="shoulders" style="grid-area: rsh">
+      <div class="btn bumper" data-btn="RB">RB</div>
+      <div class="btn trigger" data-btn="RT">RT</div>
+    </div>
+
+    <div class="stick-zone" data-stick="l" style="grid-area: lstick">
+      <div class="stick-base"><div class="stick-knob"></div></div>
+    </div>
+    <div class="dpad" style="grid-area: dpad">
+      <svg viewBox="-2 -2 104 104" aria-hidden="true">
+        <defs>
+          <g id="dpad-cross">
+            <rect x="33" y="0" width="34" height="100" rx="8"/>
+            <rect x="0" y="33" width="100" height="34" rx="8"/>
+          </g>
+          <!-- clipPath may only <use> basic shapes, not a <g>, so the cross is repeated here. -->
+          <clipPath id="dpad-clip">
+            <rect x="33" y="0" width="34" height="100" rx="8"/>
+            <rect x="0" y="33" width="100" height="34" rx="8"/>
+          </clipPath>
+        </defs>
+        <!-- Outlined cross, then the fill again on top to hide where the two bars' outlines cross. -->
+        <use href="#dpad-cross" class="dpad-outline"/>
+        <use href="#dpad-cross" class="dpad-body"/>
+        <g clip-path="url(#dpad-clip)">
+          <rect class="arm up" x="33" y="0" width="34" height="36"/>
+          <rect class="arm down" x="33" y="64" width="34" height="36"/>
+          <rect class="arm left" x="0" y="33" width="36" height="34"/>
+          <rect class="arm right" x="64" y="33" width="36" height="34"/>
+        </g>
+        <circle class="dpad-hub" cx="50" cy="50" r="8"/>
+        <path class="arrow up" d="M50 10 L57 19 H43 Z"/>
+        <path class="arrow down" d="M50 90 L57 81 H43 Z"/>
+        <path class="arrow left" d="M10 50 L19 43 V57 Z"/>
+        <path class="arrow right" d="M90 50 L81 43 V57 Z"/>
+      </svg>
+    </div>
+
+    <div class="center" style="grid-area: center">
+      <div id="status">
+        <span id="player">P–</span>
+        <span id="conn">connecting…</span>
+        <span id="rtt"></span>
+      </div>
+      <div class="row">
+        <div class="btn small" data-btn="BACK" aria-label="Back">⧉</div>
+        <div class="btn small guide" data-btn="GUIDE" aria-label="Guide">⌂</div>
+        <div class="btn small" data-btn="START" aria-label="Start">≡</div>
+      </div>
+      <div class="row">
+        <div class="btn small" data-btn="LS">L3</div>
+        <div class="btn small" data-btn="RS">R3</div>
+      </div>
+      <button id="fs" class="ui" hidden aria-label="Fullscreen">⛶ Fullscreen</button>
+    </div>
+
+    <div class="face" style="grid-area: face">
+      <div class="btn face-btn y" data-btn="Y">Y</div>
+      <div class="btn face-btn x" data-btn="X">X</div>
+      <div class="btn face-btn b" data-btn="B">B</div>
+      <div class="btn face-btn a" data-btn="A">A</div>
+    </div>
+    <div class="stick-zone" data-stick="r" style="grid-area: rstick">
+      <div class="stick-base"><div class="stick-knob"></div></div>
+    </div>
+  </main>
+
+  <div id="start" class="overlay">
+    <h1>webpad</h1>
+    <p>Tap anywhere to start</p>
+    <p id="ios-hint" class="hint" hidden>For fullscreen on iPhone: open this page in <b>Safari</b>, tap Share → <b>Add to Home Screen</b>, then open webpad from your home screen.</p>
+  </div>
+  <div id="rotate" class="overlay"><p>↻ Rotate your phone to landscape</p></div>
+
+  <script src="controller.js"></script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+:root {
+  --bg: #0e0f12;
+  --surface: #1b1d23;
+  --surface-on: #3a3e4a;
+  --border: #2c2f38;
+  --text: #e8e9ee;
+  --muted: #8a8f9c;
+  --player: var(--muted);
+  --a: #4ade80;
+  --b: #f87171;
+  --x: #60a5fa;
+  --y: #facc15;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 600 16px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Stop scrolling, zooming, text selection and iOS long-press menus. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#pad {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr minmax(9rem, 0.55fr) 1fr;
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "lsh    center rsh"
+    "lstick center face"
+    "dpad   center rstick";
+  gap: 2vh 2vw;
+  padding: max(2vh, env(safe-area-inset-top)) max(3vw, env(safe-area-inset-right))
+           max(3vh, env(safe-area-inset-bottom)) max(3vw, env(safe-area-inset-left));
+}
+
+.btn {
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: background-color 60ms, transform 60ms;
+}
+.btn.on { background: var(--surface-on); color: var(--text); transform: scale(0.94); }
+
+/* Shoulders */
+.shoulders { display: flex; gap: 2vw; }
+.shoulders .btn { flex: 1; height: 13vh; border-radius: 3vh; }
+.trigger { border-radius: 3vh 3vh 1.5vh 1.5vh; }
+
+/* Face buttons: diamond */
+.face {
+  place-self: center;
+  position: relative;
+  width: min(42vh, 100%);
+  aspect-ratio: 1;
+}
+.face-btn {
+  position: absolute;
+  width: 34%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 5.5vh;
+}
+.face-btn.y { top: 0; left: 33%; color: var(--y); }
+.face-btn.x { top: 33%; left: 0; color: var(--x); }
+.face-btn.b { top: 33%; right: 0; color: var(--b); }
+.face-btn.a { bottom: 0; left: 33%; color: var(--a); }
+.face-btn.y.on { background: var(--y); color: var(--bg); }
+.face-btn.x.on { background: var(--x); color: var(--bg); }
+.face-btn.b.on { background: var(--b); color: var(--bg); }
+.face-btn.a.on { background: var(--a); color: var(--bg); }
+
+/* D-pad: the whole square is one hit area; the SVG is just visuals.
+   JS sets .up/.down/.left/.right on .dpad for the pressed directions. */
+.dpad {
+  place-self: center;
+  width: min(32vh, 100%);
+  aspect-ratio: 1;
+}
+.dpad svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.dpad-outline { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
+.dpad-body { fill: var(--surface); }
+.dpad-hub { fill: var(--bg); opacity: 0.45; }
+.arm { fill: transparent; transition: fill 60ms; }
+.arrow { fill: var(--muted); opacity: 0.6; transition: fill 60ms, opacity 60ms; }
+.dpad.up .arm.up, .dpad.down .arm.down, .dpad.left .arm.left, .dpad.right .arm.right { fill: var(--surface-on); }
+.dpad.up .arrow.up, .dpad.down .arrow.down, .dpad.left .arrow.left, .dpad.right .arrow.right { fill: var(--text); opacity: 1; }
+
+/* Floating sticks: the base jumps to wherever the thumb lands. */
+.stick-zone {
+  position: relative;
+  border-radius: 4vh;
+  background: radial-gradient(circle, #ffffff08, transparent 70%);
+}
+.stick-base {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--stick-size, 24vh);
+  height: var(--stick-size, 24vh);
+  margin: calc(var(--stick-size, 24vh) / -2);
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: #ffffff06;
+  opacity: 0.45;
+}
+.stick-zone.active .stick-base { opacity: 1; }
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 45%;
+  height: 45%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--surface-on);
+  border: 1px solid #ffffff22;
+}
+
+/* Center column */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 2vh;
+  min-width: 0;
+}
+.row { display: flex; gap: 2.5vh; }
+.btn.small { width: 11vh; height: 11vh; border-radius: 50%; font-size: 4vh; }
+.btn.small.guide { color: var(--player); border-color: var(--player); }
+
+#status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 3.2vh;
+  color: var(--muted);
+  text-align: center;
+}
+#player {
+  font-size: 7vh;
+  font-weight: 800;
+  color: var(--player);
+}
+#rtt { font-variant-numeric: tabular-nums; min-height: 1.3em; }
+
+#fs {
+  font: inherit;
+  font-size: 3vh;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 1vh 3vh;
+}
+
+/* Overlays */
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  background: var(--bg);
+  z-index: 10;
+}
+.overlay[hidden] { display: none; }
+.overlay h1 { margin: 0; font-size: 2.5rem; }
+.overlay p { margin: 0; color: var(--muted); }
+.overlay .hint { max-width: 26rem; font-weight: 400; font-size: 0.9rem; }
+
+#rotate { display: none; z-index: 20; }
+@media (orientation: portrait) {
+  #rotate { display: flex; }
+}
