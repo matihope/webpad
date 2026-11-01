@@ -1,6 +1,8 @@
 //! Output backends: where phone input ends up. See `docs/architecture.md` for the contract.
 
 mod log;
+#[cfg(windows)]
+mod vigem;
 
 use crate::protocol::GamepadState;
 
@@ -23,11 +25,30 @@ pub enum BackendKind {
     Auto,
     /// Print input to the terminal (no device is created)
     Log,
+    /// Virtual Xbox 360 controllers via the ViGEmBus driver (Windows)
+    #[cfg(windows)]
+    Vigem,
 }
 
 pub fn create(kind: BackendKind) -> anyhow::Result<Box<dyn Backend>> {
     Ok(match kind {
-        // Only the log backend exists so far; OS backends land in milestone 2 (docs/roadmap.md).
-        BackendKind::Auto | BackendKind::Log => Box::new(log::LogBackend),
+        BackendKind::Log => Box::new(log::LogBackend),
+        #[cfg(windows)]
+        BackendKind::Vigem => Box::new(vigem::VigemBackend::new()?),
+        BackendKind::Auto => auto(),
     })
+}
+
+/// The OS gamepad backend if it works here, otherwise `log` with a loud explanation.
+fn auto() -> Box<dyn Backend> {
+    #[cfg(windows)]
+    match vigem::VigemBackend::new() {
+        Ok(backend) => return Box::new(backend),
+        Err(e) => tracing::warn!("{e:#}; falling back to the log backend (no controllers will be created)"),
+    }
+    #[cfg(not(windows))]
+    tracing::warn!(
+        "no gamepad backend for this OS yet (see docs/roadmap.md); using the log backend, so no controllers will be created"
+    );
+    Box::new(log::LogBackend)
 }

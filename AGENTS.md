@@ -47,7 +47,9 @@ In debug builds `rust-embed` serves `web/` from disk, so a browser reload picks 
 - **`ssh kolpa`:** headless Arch Linux with cargo. Use it for the uinput backend and check with `evtest`. `/dev/uinput` is root-only there, so ask the user before changing udev rules or groups.
 - **`ssh kolpa2`:** Windows (cmd shell). Use it for the ViGEm backend. It has no Rust and no ViGEmBus yet, so ask before installing.
 
-Copy code to the test machines with `rsync`/`scp` (excluding `target/`), or have them `git pull` once a remote exists.
+The repo is on GitHub (`origin` = https://github.com/matihope/webpad). Test machines build from a clone: push first, then `git pull` there.
+- kolpa2: the clone is at `%USERPROFILE%\code\webpad`. Rust is a user-level rustup with the `x86_64-pc-windows-gnu` toolchain (no Visual Studio). Build with `cargo build --release`.
+- From macOS, `cargo check --target x86_64-pc-windows-gnu` type-checks the Windows-only code.
 
 ## Conventions
 - **Protocol changes:** update `docs/protocol.md`, `src/protocol.rs` and `web/controller.js` together, and bump `PROTOCOL_VERSION` if the change breaks old clients.

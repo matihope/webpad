@@ -2,10 +2,14 @@
 
 ## Host backends
 
-### Windows: `vigem` (planned, milestone 2)
+### Windows: `vigem` (implemented, testing in progress)
 - It creates virtual Xbox 360 controllers through the ViGEmBus driver, using the `vigem-client` crate. XInput games see at most 4 of them.
 - The user must install ViGEmBus once. The project is archived upstream (2023), but the last release still works on Windows 10 and 11.
 - Button bits map directly onto `XUSB_REPORT.wButtons`. Axes use the same convention as XInput.
+- Windows assigns the XInput index (the lowest free one), not webpad. The log shows which index each player got.
+- `--backend auto` uses ViGEm when the driver is reachable. Otherwise it warns and falls back to `log`.
+- Windows Firewall blocks the port until you allow it (admin): `netsh advfirewall firewall add rule name="webpad" dir=in action=allow protocol=TCP localport=8080 profile=private`.
+- **Steam Link:** run webpad on the PC that runs the game, not on the Steam Link client. The client only forwards controllers its own OS sees, and macOS can't create virtual gamepads.
 - Test host: `ssh kolpa2`. As of 2026-11-01 it had no Rust toolchain and no ViGEmBus installed.
 
 ### Linux: `uinput` (planned, milestone 2)

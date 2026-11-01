@@ -26,8 +26,9 @@ Update the checkboxes as work lands and record details in the [dev log](log/).
 
 ## Milestone 2: OS gamepad backends
 - [ ] `uinput` backend on Linux. Test on `ssh kolpa` with `evtest`. Needs uinput permissions; see platforms.md.
-- [ ] `vigem` backend on Windows. Test on `ssh kolpa2` with `joy.cpl`. Needs a Rust toolchain and ViGEmBus installed.
-- [ ] `--backend auto` picks the OS backend, falling back to `log`, and says why
+- [x] `vigem` backend on Windows (code; type-checks from macOS via `--target x86_64-pc-windows-gnu`)
+- [ ] verify `vigem` on kolpa2: phones show up in `joy.cpl` and in Steam (over Steam Link). Needs ViGEmBus installed by the user.
+- [x] `--backend auto` picks the OS backend, falling back to `log`, and says why
 - [ ] CI cross-compile check for each OS (`cargo check --target …`)
 
 ## Milestone 3: Keyboard backend (macOS-usable)
